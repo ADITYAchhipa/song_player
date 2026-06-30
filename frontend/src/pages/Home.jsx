@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Plus, ArrowRight, Radio, Music, Users, MessageSquare } from 'lucide-react';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
+
 export default function Home() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
@@ -35,7 +37,7 @@ export default function Home() {
     }
 
     try {
-      const res = await fetch('/api/rooms', {
+      const res = await fetch(`${BACKEND_URL}/api/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hostId: userId, hostName: name })
@@ -67,7 +69,7 @@ export default function Home() {
 
     const formattedCode = roomCode.toUpperCase().trim();
     try {
-      const res = await fetch(`/api/rooms/${formattedCode}`);
+      const res = await fetch(`${BACKEND_URL}/api/rooms/${formattedCode}`);
       if (!res.ok) {
         throw new Error('Room not found');
       }

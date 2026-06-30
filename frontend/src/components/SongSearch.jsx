@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Search, Plus, Loader, Link, Music } from 'lucide-react';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
+
 export default function SongSearch({ socket, roomId, userName }) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,7 +26,7 @@ export default function SongSearch({ socket, roomId, userName }) {
       // Direct YouTube Link pasted
       setLoading(true);
       try {
-        const res = await fetch(`/api/rooms/video-details?videoId=${videoId}`);
+        const res = await fetch(`${BACKEND_URL}/api/rooms/video-details?videoId=${videoId}`);
         if (!res.ok) throw new Error('Failed to retrieve video details');
         const details = await res.json();
         
@@ -41,7 +43,7 @@ export default function SongSearch({ socket, roomId, userName }) {
       // Text Search Query
       setLoading(true);
       try {
-        const res = await fetch(`/api/rooms/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`${BACKEND_URL}/api/rooms/search?q=${encodeURIComponent(query)}`);
         if (!res.ok) throw new Error('Search failed');
         const data = await res.json();
         setResults(data);

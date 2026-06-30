@@ -8,6 +8,8 @@ import {
 import YoutubePlayer from '../components/YoutubePlayer';
 import SongSearch from '../components/SongSearch';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
+
 export default function Room() {
   const { roomId } = useParams();
   const navigate = useNavigate();
@@ -54,8 +56,8 @@ export default function Room() {
   useEffect(() => {
     if (!userName || !userId || !roomId) return;
 
-    // Connect to backend via relative path (proxied by Vite)
-    const socketConn = io('/', {
+    // Connect to backend via relative path or backend URL
+    const socketConn = io(BACKEND_URL || '/', {
       transports: ['websocket', 'polling']
     });
 
