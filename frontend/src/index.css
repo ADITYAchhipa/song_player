@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-darkBg text-slate-100 font-sans antialiased overflow-x-hidden;
+    font-family: 'Inter', sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+/* Glassmorphism helpers */
+.glass {
+  background: rgba(18, 18, 24, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-input {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-input:focus {
+  border-color: rgba(92, 99, 255, 0.6);
+  box-shadow: 0 0 15px rgba(92, 99, 255, 0.25);
+  outline: none;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(92, 99, 255, 0.6);
+}
+
+/* Floating animation for reactions */
+@keyframes floatUp {
+  0% {
+    transform: translateY(100vh) scale(0.5);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-20vh) scale(1.5) translateX(var(--random-x, 20px));
+    opacity: 0;
+  }
+}
+
+.reaction-particle {
+  position: absolute;
+  bottom: 0;
+  pointer-events: none;
+  animation: floatUp 4s cubic-bezier(0.08, 0.82, 0.17, 1) forwards;
+  z-index: 50;
+  font-size: 2rem;
+}
+
+/* Neon glow elements */
+.neon-glow-purple {
+  box-shadow: 0 0 40px rgba(92, 99, 255, 0.15);
+}
+
+.neon-glow-pink {
+  box-shadow: 0 0 40px rgba(244, 63, 94, 0.15);
+}

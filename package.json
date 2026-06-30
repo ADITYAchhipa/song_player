@@ -1,0 +1,15 @@
+{
+  "name": "youtube-music-room-workspace",
+  "version": "1.0.0",
+  "description": "Root workspace for synchronized YouTube music room",
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix frontend --legacy-peer-deps",
+    "dev:backend": "npm run start --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev": "npx concurrently \"npm run start --prefix backend\" \"npm run dev --prefix frontend\"",
+    "tunnel": "ssh -R 80:localhost:5173 serveo.net"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
