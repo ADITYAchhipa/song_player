@@ -157,12 +157,14 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
         const curTime = player.getCurrentTime() || 0;
         const playing = player.getPlayerState() === window.YT.PlayerState.PLAYING;
         
-        socket.emit('sync', {
-          roomId,
-          currentTime: curTime,
-          isPlaying: playing,
-          isHost: true
-        });
+        if (socket) {
+          socket.emit('sync', {
+            roomId,
+            currentTime: curTime,
+            isPlaying: playing,
+            isHost: true
+          });
+        }
       }, 3000);
     }
 
@@ -193,7 +195,7 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
         const drift = Math.abs(actualTime - expectedTime.current);
         if (drift > 1.8) {
           // User manually seeked!
-          if (!isListeningToSocket.current) {
+          if (!isListeningToSocket.current && socket) {
             console.log('Manual seek detected. Emitting socket seek to:', actualTime);
             socket.emit('seek', { roomId, currentTime: actualTime });
           }
@@ -219,21 +221,21 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
     const actualTime = player.getCurrentTime() || 0;
 
     if (state === window.YT.PlayerState.PLAYING) {
-      if (!isListeningToSocket.current) {
+      if (!isListeningToSocket.current && socket) {
         console.log('Manual play detected. Emitting socket play.');
         socket.emit('play', { roomId });
         socket.emit('seek', { roomId, currentTime: actualTime });
       }
       setLocalPlaying(true);
     } else if (state === window.YT.PlayerState.PAUSED) {
-      if (!isListeningToSocket.current) {
+      if (!isListeningToSocket.current && socket) {
         console.log('Manual pause detected. Emitting socket pause.');
         socket.emit('pause', { roomId });
       }
       setLocalPlaying(false);
     } else if (state === window.YT.PlayerState.ENDED) {
       console.log('Video ended. Triggering next song.');
-      if (isHost) {
+      if (isHost && socket) {
         socket.emit('next-song', { roomId });
       }
     }
@@ -241,7 +243,7 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
 
   // User Actions (Buttons)
   const togglePlayPause = () => {
-    if (!playerReady || !currentSong) return;
+    if (!playerReady || !currentSong || !socket) return;
     
     if (localPlaying) {
       socket.emit('pause', { roomId });
@@ -259,7 +261,9 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
     // Perform seek
     isListeningToSocket.current = true;
     playerInstance.current.seekTo(newTime, true);
-    socket.emit('seek', { roomId, currentTime: newTime });
+    if (socket) {
+      socket.emit('seek', { roomId, currentTime: newTime });
+    }
   };
 
   const handleVolumeChange = (e) => {
