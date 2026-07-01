@@ -16,6 +16,7 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
   const expectedTime = useRef(0);
   const timeUpdateInterval = useRef(null);
   const hostSyncInterval = useRef(null);
+  const loadedVideoId = useRef(null);
 
   // Load / Initialize Player
   useEffect(() => {
@@ -23,7 +24,8 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
     const initPlayer = () => {
       if (playerInstance.current) {
         // Player already exists, just load the song if different
-        if (currentSong?.videoId) {
+        if (currentSong?.videoId && currentSong.videoId !== loadedVideoId.current) {
+          loadedVideoId.current = currentSong.videoId;
           playerInstance.current.cueVideoById({
             videoId: currentSong.videoId,
             startSeconds: currentTime || 0
@@ -53,6 +55,7 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
 
               if (currentSong?.videoId) {
                 // If there's an active video, cue it and seek to the current time
+                loadedVideoId.current = currentSong.videoId;
                 event.target.cueVideoById({
                   videoId: currentSong.videoId,
                   startSeconds: currentTime || 0
@@ -86,10 +89,10 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
     if (!playerReady || !playerInstance.current) return;
 
     const player = playerInstance.current;
-    const currentVideoId = player.getVideoData?.()?.video_id;
 
-    if (currentSong && currentSong.videoId !== currentVideoId) {
+    if (currentSong && currentSong.videoId !== loadedVideoId.current) {
       console.log('Loading new video ID:', currentSong.videoId);
+      loadedVideoId.current = currentSong.videoId;
       isListeningToSocket.current = true;
       player.loadVideoById({
         videoId: currentSong.videoId,
@@ -101,7 +104,9 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
         isListeningToSocket.current = true;
         player.pauseVideo();
       }
-    } else if (!currentSong) {
+    } else if (!currentSong && loadedVideoId.current !== null) {
+      console.log('Stopping video because currentSong is null');
+      loadedVideoId.current = null;
       isListeningToSocket.current = true;
       player.stopVideo();
       setDuration(0);

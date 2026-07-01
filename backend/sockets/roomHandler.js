@@ -118,7 +118,7 @@ export default function registerSocketHandlers(io) {
 
         // If no song is currently playing, start playing this song immediately
         const room = await storageService.getRoom(formattedRoomId);
-        if (room && !room.currentSong) {
+        if (room && (!room.currentSong || !room.currentSong.videoId)) {
           const { nextSong, queueSongs } = await storageService.popNextSong(formattedRoomId);
           io.to(formattedRoomId).emit('change-song', nextSong);
           io.to(formattedRoomId).emit('queue-updated', queueSongs);
@@ -136,6 +136,17 @@ export default function registerSocketHandlers(io) {
         io.to(formattedRoomId).emit('queue-updated', updatedQueue);
       } catch (err) {
         console.error('Error removing song from queue:', err.message);
+      }
+    });
+
+    // Reorder Queue
+    socket.on('reorder-queue', async ({ roomId, startIndex, endIndex }) => {
+      const formattedRoomId = roomId.toUpperCase();
+      try {
+        const updatedQueue = await storageService.reorderQueue(formattedRoomId, startIndex, endIndex);
+        io.to(formattedRoomId).emit('queue-updated', updatedQueue);
+      } catch (err) {
+        console.error('Error reordering queue:', err.message);
       }
     });
 

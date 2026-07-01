@@ -70,23 +70,36 @@ export const deleteRoom = async (roomId) => {
 
 export const joinRoom = async (roomId, userId, name, socketId) => {
   if (isUsingMongo) {
-    const room = await Room.findOne({ roomId });
-    if (!room) return null;
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const room = await Room.findOne({ roomId });
+        if (!room) return null;
 
-    // Check if participant already exists with this userId or socketId
-    const existingIndex = room.participants.findIndex(p => p.userId === userId);
-    if (existingIndex > -1) {
-      room.participants[existingIndex].socketId = socketId;
-    } else {
-      room.participants.push({
-        socketId,
-        userId,
-        name,
-        isHost: room.participants.length === 0
-      });
+        // Check if participant already exists with this userId or socketId
+        const existingIndex = room.participants.findIndex(p => p.userId === userId);
+        if (existingIndex > -1) {
+          room.participants[existingIndex].socketId = socketId;
+        } else {
+          room.participants.push({
+            socketId,
+            userId,
+            name,
+            isHost: room.participants.length === 0
+          });
+        }
+        await room.save();
+        return room.toObject();
+      } catch (err) {
+        if (err.name === 'VersionError') {
+          retries--;
+          if (retries === 0) throw err;
+          await new Promise(r => setTimeout(r, Math.random() * 100));
+        } else {
+          throw err;
+        }
+      }
     }
-    await room.save();
-    return room.toObject();
   } else {
     const room = memRooms.get(roomId);
     if (!room) return null;
@@ -113,23 +126,40 @@ export const leaveRoomBySocket = async (socketId) => {
   if (isUsingMongo) {
     const rooms = await Room.find({ 'participants.socketId': socketId });
     for (const room of rooms) {
-      const pIndex = room.participants.findIndex(p => p.socketId === socketId);
-      if (pIndex > -1) {
-        const leftParticipant = room.participants[pIndex];
-        room.participants.splice(pIndex, 1);
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          const latestRoom = await Room.findOne({ roomId: room.roomId });
+          if (!latestRoom) break;
 
-        if (room.participants.length === 0) {
-          // Room is empty, delete it
-          await Room.deleteOne({ roomId: room.roomId });
-          await Queue.deleteOne({ roomId: room.roomId });
-          roomAffected = { roomId: room.roomId, deleted: true };
-        } else {
-          // If the leaving user was the host, assign a new host
-          if (leftParticipant.isHost) {
-            room.participants[0].isHost = true;
+          const pIndex = latestRoom.participants.findIndex(p => p.socketId === socketId);
+          if (pIndex > -1) {
+            const leftParticipant = latestRoom.participants[pIndex];
+            latestRoom.participants.splice(pIndex, 1);
+
+            if (latestRoom.participants.length === 0) {
+              // Room is empty, delete it
+              await Room.deleteOne({ roomId: latestRoom.roomId });
+              await Queue.deleteOne({ roomId: latestRoom.roomId });
+              roomAffected = { roomId: latestRoom.roomId, deleted: true };
+            } else {
+              // If the leaving user was the host, assign a new host
+              if (leftParticipant.isHost) {
+                latestRoom.participants[0].isHost = true;
+              }
+              await latestRoom.save();
+              roomAffected = latestRoom.toObject();
+            }
           }
-          await room.save();
-          roomAffected = room.toObject();
+          break;
+        } catch (err) {
+          if (err.name === 'VersionError') {
+            retries--;
+            if (retries === 0) throw err;
+            await new Promise(r => setTimeout(r, Math.random() * 100));
+          } else {
+            throw err;
+          }
         }
       }
     }
@@ -221,6 +251,35 @@ export const removeSongFromQueue = async (roomId, songId) => {
     if (queue) {
       queue.songs = queue.songs.filter(s => s._id.toString() !== songId);
       memQueues.set(roomId, queue);
+      return queue.songs;
+    }
+  }
+  return [];
+};
+
+export const reorderQueue = async (roomId, startIndex, endIndex) => {
+  if (isUsingMongo) {
+    const queue = await Queue.findOne({ roomId });
+    if (queue) {
+      const songs = [...queue.songs];
+      if (startIndex >= 0 && startIndex < songs.length && endIndex >= 0 && endIndex < songs.length) {
+        const [removed] = songs.splice(startIndex, 1);
+        songs.splice(endIndex, 0, removed);
+        queue.songs = songs;
+        await queue.save();
+      }
+      return queue.songs;
+    }
+  } else {
+    const queue = memQueues.get(roomId);
+    if (queue) {
+      const songs = [...queue.songs];
+      if (startIndex >= 0 && startIndex < songs.length && endIndex >= 0 && endIndex < songs.length) {
+        const [removed] = songs.splice(startIndex, 1);
+        songs.splice(endIndex, 0, removed);
+        queue.songs = songs;
+        memQueues.set(roomId, queue);
+      }
       return queue.songs;
     }
   }

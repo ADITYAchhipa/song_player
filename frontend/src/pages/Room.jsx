@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import { 
   Users, MessageSquare, ListMusic, Copy, Check, LogOut, Send, 
-  Sparkles, Shield, Compass, Radio
+  Sparkles, Shield, Compass, Radio, Trash2, GripVertical
 } from 'lucide-react';
 import YoutubePlayer from '../components/YoutubePlayer';
 import SongSearch from '../components/SongSearch';
@@ -32,6 +32,8 @@ export default function Room() {
   
   // UI States
   const [copied, setCopied] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
   const chatEndRef = useRef(null);
 
   // Initialize nickname and userID
@@ -178,6 +180,53 @@ export default function Room() {
   const handleSkipSong = () => {
     if (!socket) return;
     socket.emit('next-song', { roomId });
+  };
+
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+  };
+
+  const handleDragEnter = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = () => {
+    // Reset over index on leaving
+  };
+
+  const handleDrop = (e, targetIndex) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    if (draggedIndex === null || draggedIndex === targetIndex) return;
+
+    if (socket) {
+      socket.emit('reorder-queue', {
+        roomId,
+        startIndex: draggedIndex,
+        endIndex: targetIndex
+      });
+    }
+
+    // Optimistic UI update
+    const updatedQueue = [...queue];
+    const [removed] = updatedQueue.splice(draggedIndex, 1);
+    updatedQueue.splice(targetIndex, 0, removed);
+    setQueue(updatedQueue);
+
+    setDraggedIndex(null);
   };
 
   const handleLeaveRoom = () => {
@@ -344,17 +393,33 @@ export default function Room() {
                     queue.map((song, index) => (
                       <div
                         key={song._id}
-                        className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition group"
+                        draggable={true}
+                        onDragStart={(e) => handleDragStart(e, index)}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDragEnter={(e) => handleDragEnter(e, index)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, index)}
+                        className={`flex items-center gap-3 p-2.5 rounded-2xl border transition group cursor-grab active:cursor-grabbing select-none ${
+                          draggedIndex === index
+                            ? 'bg-white/5 opacity-40 border-dashed border-music-500/50'
+                            : dragOverIndex === index
+                            ? 'bg-music-600/10 border-music-500 scale-[1.02] shadow-lg shadow-music-600/5'
+                            : 'bg-white/[0.02] border-white/5 hover:border-white/10'
+                        }`}
                       >
-                        <span className="text-xs font-mono font-bold text-slate-500 w-4 text-center">
-                          {index + 1}
-                        </span>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <GripVertical className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-400 transition" />
+                          <span className="text-xs font-mono font-bold text-slate-500 w-4 text-center">
+                            {index + 1}
+                          </span>
+                        </div>
                         <img
                           src={song.thumbnail}
                           alt={song.title}
-                          className="w-12 h-9 object-cover rounded-lg flex-shrink-0"
+                          className="w-12 h-9 object-cover rounded-lg flex-shrink-0 pointer-events-none"
                         />
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 pointer-events-none">
                           <h5 className="text-xs font-semibold text-white truncate">
                             {song.title}
                           </h5>
@@ -365,11 +430,14 @@ export default function Room() {
                           </p>
                         </div>
                         <button
-                          onClick={() => handleRemoveSong(song._id)}
-                          className="text-slate-500 hover:text-rose-400 p-1.5 opacity-0 group-hover:opacity-100 transition"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveSong(song._id);
+                          }}
+                          className="text-slate-400 hover:text-rose-400 p-1.5 transition active:scale-90 relative z-10"
                           title="Remove from queue"
                         >
-                          ✕
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     ))
