@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import roomRoutes from './routes/roomRoutes.js';
-import { connectDB } from './services/storageService.js';
+import { connectDB, getStorageMode } from './services/storageService.js';
 import registerSocketHandlers from './sockets/roomHandler.js';
 
 dotenv.config();
@@ -26,7 +26,18 @@ app.use('/api/rooms', roomRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Sync Server is running' });
+  const dbStatus = getStorageMode();
+  res.status(200).json({
+    status: 'ok',
+    message: 'Sync Server is running',
+    timestamp: new Date(),
+    uptime: process.uptime(),
+    database: {
+      connected: dbStatus.isUsingMongo,
+      readyState: dbStatus.readyState,
+      mode: dbStatus.isUsingMongo ? 'MongoDB' : 'In-Memory Fallback'
+    }
+  });
 });
 
 // Create Server

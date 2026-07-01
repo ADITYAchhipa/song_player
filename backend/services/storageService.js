@@ -20,6 +20,13 @@ export const connectDB = async (uri) => {
   }
 };
 
+export const getStorageMode = () => {
+  return {
+    isUsingMongo,
+    readyState: isUsingMongo ? mongoose.connection.readyState : 0
+  };
+};
+
 export const createRoom = async (roomId, hostId, hostName, hostSocketId) => {
   const roomData = {
     roomId,
