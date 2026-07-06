@@ -10,16 +10,42 @@ export default function SongSearch({ socket, roomId, userName }) {
   const [error, setError] = useState('');
 
   const extractVideoId = (url) => {
-    if (url.includes('/shorts/')) {
-      const parts = url.split('/shorts/');
-      if (parts[1]) {
-        const id = parts[1].split(/[?#&]/)[0];
+    if (!url) return null;
+    
+    url = url.trim();
+
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
+      return url;
+    }
+
+    try {
+      const parsed = new URL(url);
+      
+      if (parsed.hostname === 'youtu.be') {
+        const id = parsed.pathname.substring(1).split(/[?#&]/)[0];
         if (id.length === 11) return id;
       }
+      
+      const paths = parsed.pathname.split('/');
+      const specialPaths = ['shorts', 'live', 'embed', 'v'];
+      for (let i = 0; i < paths.length - 1; i++) {
+        if (specialPaths.includes(paths[i])) {
+          const id = paths[i + 1].split(/[?#&]/)[0];
+          if (id && id.length === 11) return id;
+        }
+      }
+      
+      const vParam = parsed.searchParams.get('v');
+      if (vParam && vParam.length === 11) {
+        return vParam;
+      }
+    } catch (e) {
+      // Fall back
     }
+
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
+    return (match && match[2] && match[2].length === 11) ? match[2] : null;
   };
 
   const handleSearch = async (e) => {

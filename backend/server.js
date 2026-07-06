@@ -15,7 +15,10 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/youtub
 
 // Middleware
 app.use(cors({
-  origin: '*', // For development flexibility
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl) or dynamically allow the request origin
+    callback(null, origin || '*');
+  },
   methods: ['GET', 'POST', 'DELETE'],
   credentials: true
 }));
@@ -46,7 +49,9 @@ const httpServer = createServer(app);
 // Socket.IO
 const io = new Server(httpServer, {
   cors: {
-    origin: '*',
+    origin: (origin, callback) => {
+      callback(null, origin || '*');
+    },
     methods: ['GET', 'POST'],
     credentials: true
   }

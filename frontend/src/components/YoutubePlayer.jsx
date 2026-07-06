@@ -45,7 +45,8 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
             modestbranding: 1,    // Hide YouTube logo
             rel: 0,               // Don't show related videos
             showinfo: 0,
-            iv_load_policy: 3
+            iv_load_policy: 3,
+            origin: window.location.origin
           },
           events: {
             onReady: (event) => {
