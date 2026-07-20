@@ -151,9 +151,16 @@ export default function registerSocketHandlers(io) {
     });
 
     // Next Song (triggered by client when current song finishes or skip button pressed)
-    socket.on('next-song', async ({ roomId }) => {
+    socket.on('next-song', async ({ roomId, currentVideoId }) => {
       const formattedRoomId = roomId.toUpperCase();
       try {
+        const room = await storageService.getRoom(formattedRoomId);
+        // If currentVideoId is supplied, prevent duplicate transitions if current track already changed
+        if (currentVideoId && room?.currentSong?.videoId && room.currentSong.videoId !== currentVideoId) {
+          console.log(`Ignoring duplicate next-song for room ${formattedRoomId}: track already changed.`);
+          return;
+        }
+
         const result = await storageService.popNextSong(formattedRoomId);
         if (result) {
           const { nextSong, queueSongs } = result;

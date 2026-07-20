@@ -11,6 +11,22 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
   const [volume, setVolume] = useState(50);
   const [isMuted, setIsMuted] = useState(false);
 
+  // Sync refs to prevent stale closures in YouTube API event callbacks
+  const socketRef = useRef(socket);
+  const roomIdRef = useRef(roomId);
+  const isHostRef = useRef(isHost);
+  const currentSongRef = useRef(currentSong);
+  const onNextSongRef = useRef(onNextSong);
+  const handlePlayerStateChangeRef = useRef(null);
+
+  useEffect(() => {
+    socketRef.current = socket;
+    roomIdRef.current = roomId;
+    isHostRef.current = isHost;
+    currentSongRef.current = currentSong;
+    onNextSongRef.current = onNextSong;
+  });
+
   // Sync refs to prevent infinite loop event triggers
   const isListeningToSocket = useRef(false);
   const expectedTime = useRef(0);
@@ -68,7 +84,11 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
                 }
               }
             },
-            onStateChange: handlePlayerStateChange
+            onStateChange: (event) => {
+              if (handlePlayerStateChangeRef.current) {
+                handlePlayerStateChangeRef.current(event);
+              }
+            }
           }
         });
       } else {
@@ -219,28 +239,35 @@ export default function YoutubePlayer({ socket, roomId, currentSong, isPlaying, 
   const handlePlayerStateChange = (event) => {
     const state = event.data;
     const player = playerInstance.current;
-    const actualTime = player.getCurrentTime() || 0;
+    const actualTime = player ? (player.getCurrentTime() || 0) : 0;
+    const sock = socketRef.current;
+    const rId = roomIdRef.current;
+    const curSong = currentSongRef.current;
 
     if (state === window.YT.PlayerState.PLAYING) {
-      if (!isListeningToSocket.current && socket) {
+      if (!isListeningToSocket.current && sock) {
         console.log('Manual play detected. Emitting socket play.');
-        socket.emit('play', { roomId });
-        socket.emit('seek', { roomId, currentTime: actualTime });
+        sock.emit('play', { roomId: rId });
+        sock.emit('seek', { roomId: rId, currentTime: actualTime });
       }
       setLocalPlaying(true);
     } else if (state === window.YT.PlayerState.PAUSED) {
-      if (!isListeningToSocket.current && socket) {
+      if (!isListeningToSocket.current && sock) {
         console.log('Manual pause detected. Emitting socket pause.');
-        socket.emit('pause', { roomId });
+        sock.emit('pause', { roomId: rId });
       }
       setLocalPlaying(false);
     } else if (state === window.YT.PlayerState.ENDED) {
       console.log('Video ended. Triggering next song.');
-      if (isHost && socket) {
-        socket.emit('next-song', { roomId });
+      if (sock) {
+        sock.emit('next-song', { roomId: rId, currentVideoId: curSong?.videoId });
+      } else if (onNextSongRef.current) {
+        onNextSongRef.current();
       }
     }
   };
+
+  handlePlayerStateChangeRef.current = handlePlayerStateChange;
 
   // User Actions (Buttons)
   const togglePlayPause = () => {

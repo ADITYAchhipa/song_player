@@ -179,7 +179,7 @@ export default function Room() {
 
   const handleSkipSong = () => {
     if (!socket) return;
-    socket.emit('next-song', { roomId });
+    socket.emit('next-song', { roomId, currentVideoId: roomState?.currentSong?.videoId });
   };
 
   const handleDragStart = (e, index) => {
